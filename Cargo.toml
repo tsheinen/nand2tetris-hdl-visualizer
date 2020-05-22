@@ -1,0 +1,11 @@
+[package]
+name = "nand2tetris-hdl-visualizer"
+version = "0.1.0"
+authors = ["Teddy Heinen <teddy@heinen.dev>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nand2tetris-hdl-parser = { git = "https://github.com/tcheinen/hack-hdl-parser"}
+cached = "0.12.0"

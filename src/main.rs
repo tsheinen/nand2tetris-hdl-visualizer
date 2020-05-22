@@ -1,5 +1,7 @@
 mod error;
 
+
+
 use std::{fs, env};
 use nand2tetris_hdl_parser::{parse_hdl, Chip, HDLParseError, Part};
 use std::collections::{HashSet, HashMap};
@@ -9,6 +11,7 @@ use error::GenericError;
 use std::fmt::{Display, Formatter};
 use subprocess::{Exec, Redirection};
 use std::io::{stdout, Write};
+use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct Edge {
@@ -142,8 +145,31 @@ fn main() -> Result<(), GenericError> {
         }
     }
 
-    let root_file = &env::args().nth(1).unwrap();
+    let matches = App::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!())
+        .arg(Arg::with_name("output")
+            .long("output")
+            .short("o")
+            .value_name("OUTPUT")
+            .takes_value(true)
+            .help("File to write output to. Uses stdout by default"))
+        .arg(Arg::with_name("recursive")
+            .long("recursive")
+            .short("r")
+            .help("Recursively graph children gates - NOT IMPLEMENTED YET"))
+        .arg(Arg::with_name("FILE")
+            .help("Sets the input HDL file to use")
+            .required(true)
+            .index(1))
+        .get_matches();
+
+    let root_file = matches.value_of("FILE").expect("Missing file - a file is required by clap so this should never happen");
     let root_file_path = Path::new(root_file);
+
+    let original_path = env::current_dir()?;
+
     env::set_current_dir(root_file_path.parent().unwrap());
     let root_chip_name = root_file_path.file_name().unwrap().to_str().unwrap().split(".").next().unwrap();
     let graph = generate_graph(root_chip_name)?;
@@ -155,7 +181,12 @@ fn main() -> Result<(), GenericError> {
         .capture()
         .unwrap()
         .stdout;
-    stdout().write_all(&resp);
+    env::set_current_dir(original_path);
+    match matches.value_of("output") {
+        Some(T) => fs::write(T, &resp),
+        None => stdout().write_all(&resp)
+    };
+
 
     Ok(())
 }

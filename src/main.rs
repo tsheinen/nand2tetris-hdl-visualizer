@@ -53,8 +53,8 @@ struct Graph {
 impl Display for Graph {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "digraph {{\n");
-        write!(f, "label=\"{}\";", self.name);
-        write!(f, "labelloc=top;\nlabeljust=left;");
+        write!(f, "\tlabel=\"{}\";\n", self.name);
+        write!(f, "\tlabelloc=top;\n\tlabeljust=left;\n");
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Input", u32::MAX, "Input");
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Output", u32::MAX, "Output");
 

@@ -1,7 +1,7 @@
 use nand2tetris_hdl_parser::HDLParseError;
 use std::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct GenericError {
     details: String
 }

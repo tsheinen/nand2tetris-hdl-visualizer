@@ -7,6 +7,8 @@ use std::iter::FromIterator;
 use std::path::Path;
 use error::GenericError;
 use std::fmt::{Display, Formatter};
+use subprocess::{Exec, Redirection};
+use std::io::{stdout, Write};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct Edge {
@@ -132,11 +134,28 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
 }
 
 fn main() -> Result<(), GenericError> {
+    match which::which("dot") {
+        Ok(_) => {},
+        Err(_) => {
+            eprintln!("This utility requires GraphViz to be installed and in your PATH");
+            std::process::exit(1)
+        }
+    }
+
     let root_file = &env::args().nth(1).unwrap();
     let root_file_path = Path::new(root_file);
     env::set_current_dir(root_file_path.parent().unwrap());
     let root_chip_name = root_file_path.file_name().unwrap().to_str().unwrap().split(".").next().unwrap();
     let graph = generate_graph(root_chip_name)?;
-    println!("{}", graph);
+    let resp = Exec::cmd("dot")
+        .arg("-Tpng")
+        .stdin(format!("{}", graph).as_str())
+        .stdout(Redirection::Pipe)
+        .stderr(Redirection::Merge)
+        .capture()
+        .unwrap()
+        .stdout;
+    stdout().write_all(&resp);
+
     Ok(())
 }

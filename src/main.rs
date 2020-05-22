@@ -1,8 +1,5 @@
 mod error;
 
-#[macro_use]
-extern crate cached;
-
 use std::{fs, env};
 use nand2tetris_hdl_parser::{parse_hdl, Chip, HDLParseError, Part};
 use std::collections::{HashSet, HashMap};
@@ -48,6 +45,7 @@ impl Display for Node {
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct Graph {
+    name: String,
     nodes: Vec<Node>,
     edges: Vec<Edge>,
 }
@@ -55,6 +53,8 @@ struct Graph {
 impl Display for Graph {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "digraph {{\n");
+        write!(f, "label=\"{}\";", self.name);
+        write!(f, "labelloc=top;\nlabeljust=left;");
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Input", u32::MAX, "Input");
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Output", u32::MAX, "Output");
 
@@ -67,6 +67,7 @@ impl Display for Graph {
         write!(f, "}}\n")
     }
 }
+
 
 fn resolve(chip: &str) -> Result<Chip, GenericError> {
     let filename = &[&chip.split("_").next().unwrap(), ".hdl"].join("");
@@ -84,6 +85,7 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
             .collect::<Vec<(usize, Part)>>()
     };
     let mut graph = Graph {
+        name: chip.name,
         nodes: parts.iter().map(|(x, y)| Node { name: y.name.clone(), index: x.clone() as u32 }).collect(),
         edges: Vec::new(),
     };

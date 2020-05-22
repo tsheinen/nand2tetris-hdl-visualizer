@@ -9,13 +9,13 @@
  *       0 otherwise
  */
 
-CHIP And {
+CHIP Nor {
     IN a, b;
     OUT out;
 
     PARTS:
-    // Put your code here:
-	Not(in=a, out=nota);
-	Not(in=b, out=notb);
-	Nor(a=nota, b=notb, out=out);
+	Nand(a=a,b=a,out=NotA);
+	Nand(a=b,b=b,out=NotB);
+	Nand(a=NotA,b=NotB,out=outAorB);
+	Nand(a=outAorB,b=outAorB,out=out);
 }

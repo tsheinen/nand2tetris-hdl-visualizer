@@ -8,4 +8,3 @@ edition = "2018"
 
 [dependencies]
 nand2tetris-hdl-parser = { git = "https://github.com/tcheinen/hack-hdl-parser"}
-cached = "0.12.0"

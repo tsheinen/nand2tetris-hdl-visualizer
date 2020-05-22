@@ -1,11 +1,25 @@
+//! visualization utility for nand2tetris HDL
+
+#![forbid(unsafe_code)]
+#![deny(
+missing_debug_implementations,
+missing_docs,
+trivial_casts,
+trivial_numeric_casts,
+unused_extern_crates,
+unused_import_braces,
+unused_qualifications,
+unused_results,
+warnings
+)]
+
 mod error;
 
 
 
 use std::{fs, env};
-use nand2tetris_hdl_parser::{parse_hdl, Chip, HDLParseError, Part};
-use std::collections::{HashSet, HashMap};
-use std::iter::FromIterator;
+use nand2tetris_hdl_parser::{parse_hdl, Chip, Part};
+use std::collections::HashMap;
 use std::path::Path;
 use error::GenericError;
 use std::fmt::{Display, Formatter};
@@ -57,19 +71,20 @@ struct Graph {
 
 impl Display for Graph {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "digraph {{\n");
-        write!(f, "\tlabel=\"{}\";\n", self.name);
-        write!(f, "\tlabelloc=top;\n\tlabeljust=left;\n");
-        write!(f, "\t{}_{} [label=\"{}\"];\n", "Input", u32::MAX, "Input");
-        write!(f, "\t{}_{} [label=\"{}\"];\n", "Output", u32::MAX, "Output");
+        write!(f, "digraph {{\n")?;
+        write!(f, "\tlabel=\"{}\";\n", self.name)?;
+        write!(f, "\tlabelloc=top;\n\tlabeljust=left;\n")?;
+        write!(f, "\t{}_{} [label=\"{}\"];\n", "Input", u32::MAX, "Input")?;
+        write!(f, "\t{}_{} [label=\"{}\"];\n", "Output", u32::MAX, "Output")?;
 
         for node in self.nodes.clone() {
-            write!(f, "\t{}", node);
+            write!(f, "\t{}", node)?;
         }
         for edge in self.edges.clone() {
-            write!(f, "\t{}", edge);
+            write!(f, "\t{}", edge)?;
         }
-        write!(f, "}}\n")
+        write!(f, "}}\n")?;
+        Ok(())
     }
 }
 
@@ -129,7 +144,7 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
                     }
                 });
             } else {
-                connections.insert(pin.name, (part.name.clone(), index as u32));
+                let _ = connections.insert(pin.name, (part.name.clone(), index as u32));
             }
         }
     }
@@ -170,7 +185,7 @@ fn main() -> Result<(), GenericError> {
 
     let original_path = env::current_dir()?;
 
-    env::set_current_dir(root_file_path.parent().unwrap());
+    env::set_current_dir(root_file_path.parent().unwrap())?;
     let root_chip_name = root_file_path.file_name().unwrap().to_str().unwrap().split(".").next().unwrap();
     let graph = generate_graph(root_chip_name)?;
     let resp = Exec::cmd("dot")
@@ -181,10 +196,10 @@ fn main() -> Result<(), GenericError> {
         .capture()
         .unwrap()
         .stdout;
-    env::set_current_dir(original_path);
+    env::set_current_dir(original_path)?;
     match matches.value_of("output") {
-        Some(T) => fs::write(T, &resp),
-        None => stdout().write_all(&resp)
+        Some(t) => fs::write(t, &resp)?,
+        None => stdout().write_all(&resp)?
     };
 
 

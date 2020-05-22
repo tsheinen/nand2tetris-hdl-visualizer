@@ -36,3 +36,11 @@ digraph {
 which can be rendered using GraphViz as
 
 ![And graph](assets/And.png)
+
+### TODO
+
+* Link GraphViz so it can output images directly
+* Add option to recursively graph gates
+* Use logic gate shapes instead of oval for known logic gates
+    * https://gitlab.com/graphviz/graphviz/-/issues/99 :(
+* generally clean up code so it isn't ugly

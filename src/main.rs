@@ -16,10 +16,9 @@ warnings
 mod error;
 
 
-
 use std::{fs, env};
 use nand2tetris_hdl_parser::{parse_hdl, Chip, Part};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::path::Path;
 use error::GenericError;
 use std::fmt::{Display, Formatter};
@@ -29,19 +28,24 @@ use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct Edge {
-    source: (String, u32),
-    dest: (String, u32),
+    source: BTreeSet<(String, u32)>,
+    dest: BTreeSet<(String, u32)>,
     pin_name: String,
 }
 
 impl Display for Edge {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f,
-               "{} -> {} [ label=\" {}\" ];\n",
-               format!("{}_{}", self.source.0, self.source.1),
-               format!("{}_{}", self.dest.0, self.dest.1),
-               self.pin_name
-        )
+        for (source_pin, source_index) in &self.source {
+            for (dest_pin, dest_index) in &self.dest {
+                write!(f,
+                       "{} -> {} [ label=\" {}\" ];\n",
+                       format!("{}_{}", source_pin, source_index),
+                       format!("{}_{}", dest_pin, dest_index),
+                       self.pin_name
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -104,56 +108,48 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
             .map(|(x, y)| (x, y.clone()))
             .collect::<Vec<(usize, Part)>>()
     };
-    let mut graph = Graph {
-        name: chip.name,
-        nodes: parts.iter().map(|(x, y)| Node { name: y.name.clone(), index: x.clone() as u32 }).collect(),
-        edges: Vec::new(),
-    };
-    let mut connections: HashMap<String, (String, u32)> = HashMap::new();
+
+    let mut connections = HashMap::<String, Edge>::new();
     for (index, part) in parts.clone() {
-        for pin in part.external {
-            if chip.inputs.iter().any(|x| x.name == pin.name) {
-                graph.edges.push(Edge {
-                    source: ("Input".to_string(), u32::MAX),
-                    dest: (part.name.clone(), index as u32),
-                    pin_name: pin.name.clone(),
-                })
-            }
-            if chip.outputs.iter().any(|x| x.name == pin.name) {
-                graph.edges.push(Edge {
-                    source: (part.name.clone(), index as u32),
-                    dest: ("Output".to_string(), u32::MAX),
-                    pin_name: pin.name.clone(),
-                })
-            }
-            if connections.contains_key(&pin.name) {
-                let conn_chip = resolve(&part.name)?;
-                graph.edges.push(if conn_chip.inputs.iter().any(|x| x.name == pin.name) {
-                    // current chip has pin in inputs so its the destination chip
-                    Edge {
-                        source: (part.name.clone(), index as u32),
-                        dest: connections.get(&pin.name).unwrap().clone(),
-                        pin_name: pin.name,
-                    }
-                } else {
-                    // stored chip has pin in inputs so its the destination chip
-                    Edge {
-                        source: connections.get(&pin.name).unwrap().clone(),
-                        dest: (part.name.clone(), index as u32),
-                        pin_name: pin.name,
-                    }
+        for (internal, external) in part.internal.iter().zip(part.external) {
+            let part_chip = resolve(&part.name)?;
+            let any_input = part_chip.inputs.iter().any(|x| x == internal);
+            let any_output = part_chip.outputs.iter().any(|x| x == internal);
+            let any_chip_input = chip.inputs.iter().any(|x| x == &external);
+            let any_chip_output = chip.outputs.iter().any(|x| x == &external);
+            if !connections.contains_key(&external.name) {
+                let _ = connections.insert(external.name.clone(), Edge {
+                    source: BTreeSet::new(),
+                    dest: BTreeSet::new(),
+                    pin_name: external.name.clone(),
                 });
-            } else {
-                let _ = connections.insert(pin.name, (part.name.clone(), index as u32));
+            }
+            let edge = connections.get_mut(&external.name).unwrap();
+
+            if (!any_input && !any_output) || (any_input && any_output) {
+                panic!("Unexpected behaviour is occurring, please report this :)");
+            } else if any_input {
+                let _ = edge.dest.insert((part.name.clone(), index as u32));
+            } else if any_output {
+                let _ = edge.source.insert((part.name.clone(), index as u32));
+            }
+            if any_chip_input && !edge.source.contains(&(String::from("Input"), u32::MAX)) {
+                let _ = edge.source.insert((String::from("Input"), u32::MAX));
+            } else if any_chip_output && !edge.source.contains(&(String::from("Input"), u32::MAX)) {
+                let _ = edge.dest.insert((String::from("Output"), u32::MAX));
             }
         }
     }
-    Ok(graph)
+    Ok(Graph {
+        name: chip.name,
+        nodes: parts.iter().map(|(x, y)| Node { name: y.name.clone(), index: x.clone() as u32 }).collect(),
+        edges: connections.iter().map(|(_, y)| y.clone()).collect(),
+    })
 }
 
 fn main() -> Result<(), GenericError> {
     match which::which("dot") {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {
             eprintln!("This utility requires GraphViz to be installed and in your PATH");
             std::process::exit(1)

@@ -131,7 +131,7 @@ checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 [[package]]
 name = "nand2tetris-hdl-parser"
 version = "0.1.0"
-source = "git+https://github.com/tcheinen/hack-hdl-parser#0565bfae53190375e51598ed54f66dbdf88c3f5a"
+source = "git+https://github.com/tcheinen/hack-hdl-parser#d24107af92e6df55776f040e47976bb35852d32e"
 dependencies = [
  "nom",
 ]

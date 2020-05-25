@@ -38,11 +38,7 @@ impl Display for Edge {
         for (source_pin, source_index) in &self.source {
             for (dest_pin, dest_index) in &self.dest {
                 write!(f,
-                       "{} -> {} [ label=\" {}\" ];\n",
-                       format!("{}_{}", source_pin, source_index),
-                       format!("{}_{}", dest_pin, dest_index),
-                       self.pin_name
-                )?;
+                       "{}_{} -> {}_{} [ label=\" {}\" ];\n", source_pin, source_index, dest_pin, dest_index, self.pin_name)?;
             }
         }
         Ok(())

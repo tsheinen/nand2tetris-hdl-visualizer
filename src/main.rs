@@ -77,10 +77,10 @@ impl Display for Graph {
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Input", u32::MAX, "Input")?;
         write!(f, "\t{}_{} [label=\"{}\"];\n", "Output", u32::MAX, "Output")?;
 
-        for node in self.nodes.clone() {
+        for node in &self.nodes {
             write!(f, "\t{}", node)?;
         }
-        for edge in self.edges.clone() {
+        for edge in &self.edges {
             write!(f, "\t{}", edge)?;
         }
         write!(f, "}}\n")?;
@@ -101,18 +101,18 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
         chip.parts
             .iter()
             .enumerate()
-            .map(|(x, y)| (x, y.clone()))
-            .collect::<Vec<(usize, Part)>>()
+            .map(|(x, y)| (x, y))
+            .collect::<Vec<(usize, &Part)>>()
     };
 
     let mut connections = HashMap::<String, Edge>::new();
-    for (index, part) in parts.clone() {
-        for (internal, external) in part.internal.iter().zip(part.external) {
+    for (index, part) in &parts {
+        for (internal, external) in part.internal.iter().zip(&part.external) {
             let part_chip = resolve(&part.name)?;
             let any_input = part_chip.inputs.iter().any(|x| x == internal);
             let any_output = part_chip.outputs.iter().any(|x| x == internal);
-            let any_chip_input = chip.inputs.iter().any(|x| x == &external);
-            let any_chip_output = chip.outputs.iter().any(|x| x == &external);
+            let any_chip_input = chip.inputs.iter().any(|x| x == external);
+            let any_chip_output = chip.outputs.iter().any(|x| x == external);
             if !connections.contains_key(&external.name) {
                 let _ = connections.insert(external.name.clone(), Edge {
                     source: BTreeSet::new(),
@@ -120,14 +120,17 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
                     pin_name: external.name.clone(),
                 });
             }
-            let edge = connections.get_mut(&external.name).unwrap();
+            let edge = match connections.get_mut(&external.name) {
+                Some(edge) => edge,
+                None => continue
+            };
 
             if (!any_input && !any_output) || (any_input && any_output) {
                 panic!("Unexpected behaviour is occurring, please report this :)");
             } else if any_input {
-                let _ = edge.dest.insert((part.name.clone(), index as u32));
+                let _ = edge.dest.insert((part.name.clone(), *index as u32));
             } else if any_output {
-                let _ = edge.source.insert((part.name.clone(), index as u32));
+                let _ = edge.source.insert((part.name.clone(), *index as u32));
             }
             if any_chip_input && !edge.source.contains(&(String::from("Input"), u32::MAX)) {
                 let _ = edge.source.insert((String::from("Input"), u32::MAX));

@@ -16,7 +16,7 @@ warnings
 mod error;
 
 
-use std::{fs, env};
+use std::{fs, env, process};
 use nand2tetris_hdl_parser::{parse_hdl, Chip, Part};
 use std::collections::{HashMap, BTreeSet};
 use std::path::Path;
@@ -91,9 +91,16 @@ impl Display for Graph {
 
 fn resolve(chip: &str) -> Result<Chip, GenericError> {
     let filename = &[&chip.split("_").next().unwrap(), ".hdl"].join("");
-    let hdl = fs::read_to_string(filename)?;
+    let hdl = match fs::read_to_string(filename) {
+        Ok(file) => file,
+        Err(_) => {
+            println!("The file {} is missing. It should be in the same directory as the entry file. If you're sure the file exists, report this please.  ", filename);
+            process::exit(1);
+        }
+    };
     Ok(parse_hdl(&hdl)?)
 }
+
 
 fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
     let chip = resolve(filename)?;
@@ -108,11 +115,10 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
     let mut connections = HashMap::<String, Edge>::new();
     for (index, part) in &parts {
         for (internal, external) in part.internal.iter().zip(&part.external) {
-            let part_chip = resolve(&part.name)?;
-            let any_input = part_chip.inputs.iter().any(|x| x == internal);
-            let any_output = part_chip.outputs.iter().any(|x| x == internal);
-            let any_chip_input = chip.inputs.iter().any(|x| x == external);
-            let any_chip_output = chip.outputs.iter().any(|x| x == external);
+
+
+            // connections needs to hold an edge struct for each pin name by the time i get to processing it
+            // to save a for loop i just add it at the beginning if it doesn't already exist
             if !connections.contains_key(&external.name) {
                 let _ = connections.insert(external.name.clone(), Edge {
                     source: BTreeSet::new(),
@@ -125,22 +131,46 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
                 None => continue
             };
 
-            if (!any_input && !any_output) || (any_input && any_output) {
-                panic!("Unexpected behaviour is occurring, please report this :)");
-            } else if any_input {
-                let _ = edge.dest.insert((part.name.clone(), *index as u32));
-            } else if any_output {
-                let _ = edge.source.insert((part.name.clone(), *index as u32));
-            }
-            if any_chip_input && !edge.source.contains(&(String::from("Input"), u32::MAX)) {
-                let _ = edge.source.insert((String::from("Input"), u32::MAX));
-            } else if any_chip_output && !edge.source.contains(&(String::from("Input"), u32::MAX)) {
-                let _ = edge.dest.insert((String::from("Output"), u32::MAX));
+            // An HDL file doesn't include enough information to determine if a pin is an input or an output.
+            // To determine that, we need to recursively resolve any children chips.  A potential snag is that default
+            // chips (AND, OR, etc) aren't included because my program has no method of locating these.  They need to be
+            // copied into the same directory as the entry file.
+            //
+            // To construct the graph we need to know if any of the internal pins of a part connect to the inputs/outputs
+            // and if the external pins of a part connect to the main chip inputs/outputs
+            // If the internal pin connects to a part input we know that the part is the destination for that pin edge
+            // if it connects to a part output we know it is the source of that pin edge
+            // If the external pin connects to the input of the root chip we know that the edge has Input as a source
+            // and the reverse for pins that connect to the output
+            {
+                let part_chip = resolve(&part.name)?;
+                let any_input = part_chip.inputs.iter().any(|x| x == internal);
+                let any_output = part_chip.outputs.iter().any(|x| x == internal);
+                let any_chip_input = chip.inputs.iter().any(|x| x == external);
+                let any_chip_output = chip.outputs.iter().any(|x| x == external);
+
+                if (!any_input && !any_output) || (any_input && any_output) {
+                    panic!("Unexpected behaviour is occurring. If your HDL  please report this :)");
+                } else if any_input {
+                    let _ = edge.dest.insert((part.name.clone(), *index as u32));
+                } else if any_output {
+                    let _ = edge.source.insert((part.name.clone(), *index as u32));
+                }
+
+                if any_chip_input {
+                    let _ = edge.source.insert((String::from("Input"), u32::MAX));
+                } else if any_chip_output {
+                    let _ = edge.dest.insert((String::from("Output"), u32::MAX));
+                };
             }
         }
     }
+
     let mut edges: Vec<Edge> = connections.iter().map(|(_, y)| y.clone()).collect();
+
+    // edges need to have a consistent ordering for testing purposes because HashMaps aren't ordered
     edges.sort_unstable_by_key(|x| x.pin_name.clone());
+
     Ok(Graph {
         name: chip.name,
         nodes: parts.iter().map(|(x, y)| Node { name: y.name.clone(), index: x.clone() as u32 }).collect(),
@@ -214,7 +244,6 @@ mod tests {
 
     #[test]
     fn and_graph() -> Result<(), GenericError> {
-
         let _and = Graph {
             name: "And".to_string(),
             nodes: vec![

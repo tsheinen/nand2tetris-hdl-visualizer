@@ -147,7 +147,8 @@ checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 [[package]]
 name = "nand2tetris-hdl-parser"
 version = "0.1.0"
-source = "git+https://github.com/tcheinen/hack-hdl-parser#d24107af92e6df55776f040e47976bb35852d32e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c489c62c32326531997bb62815de1d4223db4f412098a7b3438291ec3557d8"
 dependencies = [
  "nom",
 ]

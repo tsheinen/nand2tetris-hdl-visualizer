@@ -11,3 +11,6 @@ nand2tetris-hdl-parser = { git = "https://github.com/tcheinen/hack-hdl-parser"}
 subprocess = "0.2.4"
 which = "3.1.1"
 clap = "2.33.1"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"

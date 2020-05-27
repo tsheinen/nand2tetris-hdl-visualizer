@@ -139,10 +139,12 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
             }
         }
     }
+    let mut edges: Vec<Edge> = connections.iter().map(|(_, y)| y.clone()).collect();
+    edges.sort_unstable_by_key(|x| x.pin_name.clone());
     Ok(Graph {
         name: chip.name,
         nodes: parts.iter().map(|(x, y)| Node { name: y.name.clone(), index: x.clone() as u32 }).collect(),
-        edges: connections.iter().map(|(_, y)| y.clone()).collect(),
+        edges: edges,
     })
 }
 
@@ -183,6 +185,7 @@ fn main() -> Result<(), GenericError> {
     env::set_current_dir(root_file_path.parent().unwrap())?;
     let root_chip_name = root_file_path.file_name().unwrap().to_str().unwrap().split(".").next().unwrap();
     let graph = generate_graph(root_chip_name)?;
+
     let resp = Exec::cmd("dot")
         .arg("-Tpng")
         .stdin(format!("{}", graph).as_str())
@@ -199,4 +202,116 @@ fn main() -> Result<(), GenericError> {
 
 
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::error::GenericError;
+    use crate::{Graph, Node, Edge, generate_graph};
+    use std::env;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn and_graph() -> Result<(), GenericError> {
+
+        let _and = Graph {
+            name: "And".to_string(),
+            nodes: vec![
+                Node {
+                    name: "Not".to_string(),
+                    index: 0,
+                },
+                Node {
+                    name: "Not".to_string(),
+                    index: 1,
+                },
+                Node {
+                    name: "Nor".to_string(),
+                    index: 2,
+                },
+            ],
+            edges: vec![
+                Edge {
+                    source: vec![
+                        (
+                            "Input".to_string(),
+                            4294967295,
+                        ),
+                    ].into_iter().collect(),
+                    dest: vec![
+                        (
+                            "Not".to_string(),
+                            0,
+                        ),
+                    ].into_iter().collect(),
+                    pin_name: "a".to_string(),
+                },
+                Edge {
+                    source: vec![
+                        (
+                            "Input".to_string(),
+                            4294967295,
+                        ),
+                    ].into_iter().collect(),
+                    dest: vec![
+                        (
+                            "Not".to_string(),
+                            1,
+                        ),
+                    ].into_iter().collect(),
+                    pin_name: "b".to_string(),
+                },
+                Edge {
+                    source: vec![
+                        (
+                            "Not".to_string(),
+                            0,
+                        ),
+                    ].into_iter().collect(),
+                    dest: vec![
+                        (
+                            "Nor".to_string(),
+                            2,
+                        ),
+                    ].into_iter().collect(),
+                    pin_name: "nota".to_string(),
+                },
+                Edge {
+                    source: vec![
+                        (
+                            "Not".to_string(),
+                            1,
+                        ),
+                    ].into_iter().collect(),
+                    dest: vec![
+                        (
+                            "Nor".to_string(),
+                            2,
+                        ),
+                    ].into_iter().collect(),
+                    pin_name: "notb".to_string(),
+                },
+                Edge {
+                    source: vec![
+                        (
+                            "Nor".to_string(),
+                            2,
+                        ),
+                    ].into_iter().collect(),
+                    dest: vec![
+                        (
+                            "Output".to_string(),
+                            4294967295,
+                        ),
+                    ].into_iter().collect(),
+                    pin_name: "out".to_string(),
+                },
+            ],
+        };
+
+        env::set_current_dir("assets")?;
+        assert_eq!(generate_graph("And")?, _and);
+        Ok(())
+    }
 }

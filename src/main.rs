@@ -144,10 +144,10 @@ fn generate_graph(filename: &str) -> Result<Graph, GenericError> {
             // and the reverse for pins that connect to the output
             {
                 let part_chip = resolve(&part.name)?;
-                let any_input = part_chip.inputs.iter().any(|x| x == internal);
-                let any_output = part_chip.outputs.iter().any(|x| x == internal);
-                let any_chip_input = chip.inputs.iter().any(|x| x == external);
-                let any_chip_output = chip.outputs.iter().any(|x| x == external);
+                let any_input = part_chip.inputs.iter().any(|x| x.name == internal.name);
+                let any_output = part_chip.outputs.iter().any(|x| x.name == internal.name);
+                let any_chip_input = chip.inputs.iter().any(|x| x.name == external.name);
+                let any_chip_output = chip.outputs.iter().any(|x| x.name == external.name);
 
                 if (!any_input && !any_output) || (any_input && any_output) {
                     panic!("Unexpected behaviour is occurring. If your HDL  please report this :)");
